@@ -26,14 +26,15 @@ The	script spec:
 
 Example:
 
-`./techtest.py aebhughes
-`
+```
+./techtest.py aebhughes
+```
 
 Output
 
-`
+```
 You have listened to a total of 254 tracks.
 Top favourite artists: CCR, Queen, ...
 You listen to, on average, 10 tracks a day.
 Your most active day is Wednesday'
-`
+```
