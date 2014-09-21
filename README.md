@@ -23,3 +23,17 @@ The	script spec:
     - Top	5 artists	listened	to.
     - Average	number	of	tracks	per	day (excluding	days	with	no	data).
     - Most active day	of the	week by	number of listens.
+
+Example:
+
+`./techtest.py aebhughes
+`
+
+Output
+
+`
+You have listened to a total of 254 tracks.
+Top favourite artists: CCR, Queen, ...
+You listen to, on average, 10 tracks a day.
+Your most active day is Wednesday'
+`
