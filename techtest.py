@@ -37,46 +37,6 @@ def fail_on_error(err_type, code=0, message=''):
         print('unidentifed error call. Code={}, msg={}'.format(code,message)
     sys.exit()
 
-def get_data(user, page=1, dt_from=0, dt_to=0):
-    payload = PARAMS
-    payload['user'] = user
-    payload['page'] = page
-    if dt_from > 0:
-        payload['from'] = dt_from
-    elif dt_to > 0:
-        payload['to'] = dt_to
-    r = requests.get(BASE_URL, params=payload)
-    if r.status_code == 200:
-        d = r.json()
-        if 'error' in d:
-            fail_on_error('api', code=d['error'], message=d['message'])
-        return r.json()
-    fail_on_error('requests', code=r.status_code)
-
-def get_recent_tracks(user):
-    '''
-    Currently, the API only releases 10 per page, and we are restricted from
-    increasing it by using &limit=
-    '''
-    for page in xrange(1,6):
-        d = get_data(user)
-        w = d['recenttracks']
-        for t in w['tracks']:
-            track.append(t)
-    if 'track' in w:
-        tracks = w['track']
-        for track in tracks:
-            name = track['name']
-            artist = track['artist']['#text']
-            track_date = track['date']
-            date_uts = track_date['uts']
-            date_text = track_date['#text']
-            dt = datetime.datetime.fromtimestamp(int(date_uts))
-            print('{}, ({}). Date: {} {}'.format(name, artist, date_uts,
-                                                 dt.strftime('%Y/%m/%d')))
-        return
-    print(json.dumps(d, sort_keys=True, indent=3))
-    
 def check_args():
     if len(sys.argv) < 2:
         fail_on_error('argv')
@@ -91,6 +51,84 @@ def check_args():
         return sys.argv[1]
     fail_on_error('requests', code=r.status_code)
 
+def get_data(user, dt_from=0, dt_to=0):
+    payload = PARAMS
+    payload['user'] = user
+    if dt_from > 0:
+        payload['from'] = dt_from
+    elif dt_to > 0:
+        payload['to'] = dt_to
+    r = requests.get(BASE_URL, params=payload)
+    if r.status_code == 200:
+        d = r.json()
+        if 'error' in d:
+            fail_on_error('api', code=d['error'], message=d['message'])
+        return r.json()
+    fail_on_error('requests', code=r.status_code)
+
+def create_rec(response):
+    r = response('recenttracks', None)
+    records = []
+    if r:
+        tracks = r.get('tracks', [])
+        for track in r.get('tracks', []):
+            records.append( (
+                             track['date']['uts'],
+                             track['name'],
+                             track['artist']['#text']
+                             ) )
+    return records
+        
+def get_recent_tracks(user):
+    '''
+    Currently, the API only releases 10 per page, and we are restricted from
+    increasing it by using &limit=
+    '''
+    with open('{}.json'.format(user)) as infile:
+        try:
+            existing = json.load(infile)
+            dt_from = existing[-1][0]
+        except ValueError:
+            existing = []
+            dt_from = 0
+    new = []
+    old = []
+    newrecs = True
+    for page in xrange(5):
+        if newrecs:
+            if dt_from > 0:
+                d = get_data(user,dt_from=dt_from)
+            else:
+                d = get_data(user)   # new file
+            rec = create_rec(d)
+            if rec:
+                new = new + rec
+            else:
+                newrec = False
+        else:
+            existing = sorted(existing + new)
+            dt_to = existing[0][0] 
+            d = get_data(user,dt_to=dt_to)
+            rec = create_rec(d)
+            old = old + rec
+    existing = sorted(new + existing + old)
+    with open('{}.json'.format(user), 'w') as outfile:
+        json.dump(existing, outfile)
+
+    
+def display_results(user):
+    with open('{}.json'.format(user)) as infile:
+        tracks = json.load(infile)
+    except ValueError:
+        print('No data to display')
+        return
+    tracks = {}
+    artists = {}
+        
+    # total unique tracks
+    
+
 if __name__ == '__main__':
     user = check_args()
-    get_recent_tracks(user)
+    get_recent_tracks(user, f)
+    display_results(user)
