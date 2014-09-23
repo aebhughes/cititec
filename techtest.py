@@ -12,6 +12,8 @@ BASE_URL ='http://ws.audioscrobbler.com/2.0/'
 API_KEY = '37ec4aba2276f65295c2401e38355447'
 PARAMS = {'api_key': API_KEY, 'format': 'json', 'method': 'user.getRecentTracks'}
 
+# Standard set of error displays
+
 NO_ARG = '''
     Username required.
     USAGE:
@@ -27,6 +29,8 @@ API_FAIL = '''
 '''
 
 def fail_on_error(err_type, code=0, message=''):
+    '''Standard error handling function'''
+
     if err_type == 'argv':
         print(NO_ARG)
     elif err_type == 'requests':
@@ -34,10 +38,14 @@ def fail_on_error(err_type, code=0, message=''):
     elif err_type == 'api':
         print(API_FAIL.format(code, message))
     else:
-        print('unidentifed error call. Code={}, msg={}'.format(code,message))
+        print('unidentified error call. Code={}, msg={}'.format(code,message))
     sys.exit()
 
 def check_args(args):
+    '''
+    Comprehensive argument handling. Argparse is not used because of
+    possible efficacy issues
+    '''
     if len(args) < 2:
         fail_on_error('argv')
     user = args.pop()
@@ -53,6 +61,9 @@ def check_args(args):
     fail_on_error('requests', code=r.status_code)
 
 def get_data(user, dt_from=0, dt_to=0):
+    '''
+    Standardised API call. Returns a dictionary.
+    '''
     payload = PARAMS
     payload['user'] = user
     payload['method'] = 'user.getrecenttracks'
@@ -69,6 +80,9 @@ def get_data(user, dt_from=0, dt_to=0):
     fail_on_error('requests', code=r.status_code)
 
 def create_rec(response):
+    '''
+    Convert API response into a list of tuples containing relevant data only.
+    '''
     r = response.get('recenttracks', None)
     records = []
     tracks = r.get('track', [])
@@ -81,6 +95,10 @@ def create_rec(response):
     return records
         
 def get_existing(user):
+    '''
+    Read persistent data.  Script can be changed over to JSON, YAML, Database
+    etc. by changing this function and write_existing alone. 
+    '''
     existing = []
     try:
         for line in open('{}.txt'.format(user), 'r'):
@@ -95,6 +113,10 @@ def get_existing(user):
     return existing
             
 def write_existing(existing, user):
+    '''
+    Write persistent data.  Script can be changed over to JSON, YAML, Database
+    etc. by changing this function and read_existing alone. 
+    '''
     with (open('{}.txt'.format(user), 'w')) as outfile:
         for rec in existing:
             rec = list(rec)
@@ -103,6 +125,10 @@ def write_existing(existing, user):
 
 def get_recent_tracks(user):
     '''
+    1) Get saved persistent data, already sorted in date order
+    2) Add new found API to front.  API query uses &from=
+    3) Back fill missing data, using the &to=
+    4) Only 5 API reads allowed.  New tracks collected first before backfill
     '''
     existing = get_existing(user)
     dt_from = 0
@@ -133,6 +159,9 @@ def get_recent_tracks(user):
 
     
 def display_results(user):
+    '''
+    Display from exiting data file. Terminates if datafile empty.
+    '''
     history = get_existing(user)
     if not history:
         print('No data to display')
@@ -166,7 +195,7 @@ def display_results(user):
     newest_dt = datetime.datetime.fromtimestamp(max_date)
     delta = newest_dt - oldest_dt
     avg = round(float(len(history)) / float(delta.days))
-    print('You listen to and average of {} tracks a day.'.format(avg))
+    print('You listen to and average of {} tracks a day.'.format(int(avg)))
 
     d = Counter(days)
     print('Your most active day is {}'.format(d.most_common(1)[0][0]))
