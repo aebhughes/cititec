@@ -139,17 +139,37 @@ def display_results(user):
         return
     print('You have listened to a total of {} tracks'.format(len(history)))
     artists = {}
+    days = {}
+    max_date = 0
+    min_date = sys.maxint
     for rec in history:
         artist = rec[2]
         if artist in artists:
             artists[artist] += 1
         else:
             artists[artist] = 1
-    d = Counter(artists)
-    p = []
-    for artist, count in d.most_common(5): 
-        p.append(artist)
-    print('Your top favourite artists: {}'.format(','.join(p)))
+        dt = datetime.datetime.fromtimestamp(rec[0])
+        daylit = dt.strftime('%A')
+        if daylit in days:
+            days[daylit] += 1
+        else:
+            days[daylit] = 1
+        if rec[0] > max_date:
+            max_date = rec[0]
+        if rec[0] < min_date:
+            min_date = rec[0]
+    top_artists = Counter(artists)
+    top5 = [x[0] for x in top_artists.most_common(5)]
+    print('Your top favourite artists: {}'.format(','.join(top5)))
+
+    oldest_dt = datetime.datetime.fromtimestamp(min_date)
+    newest_dt = datetime.datetime.fromtimestamp(max_date)
+    delta = newest_dt - oldest_dt
+    avg = round(float(len(history)) / float(delta.days))
+    print('You listen to and average of {} tracks a day.'.format(avg))
+
+    d = Counter(days)
+    print('Your most active day is {}'.format(d.most_common(1)[0][0]))
 
 if __name__ == '__main__':
     user = check_args(sys.argv)
