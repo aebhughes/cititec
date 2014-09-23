@@ -71,30 +71,43 @@ def get_data(user, dt_from=0, dt_to=0):
 def create_rec(response):
     r = response.get('recenttracks', None)
     records = []
-    if r:
-        tracks = r.get('tracks', [])
-        for track in r.get('tracks', []):
-            records.append( (
-                             track['date']['uts'],
-                             track['name'],
-                             track['artist']['#text']
-                             ) )
+    tracks = r.get('track', [])
+    for track in tracks:
+        records.append( (
+                         int(track['date']['uts']),
+                         track['name'],
+                         track['artist']['#text']
+                         ) )
     return records
         
+def get_existing(user):
+    existing = []
+    try:
+        for line in open('{}.txt'.format(user), 'r'):
+            inline = line.strip().split('|')
+            rec = []
+            for elem in inline:
+                rec.append(elem.strip())
+            rec[0] = int(rec[0])
+            existing.append(tuple(rec))
+    except IOError:
+        open('{}.txt'.format(user), 'a').close()
+    return existing
+            
+def write_existing(existing, user):
+    with (open('{}.txt'.format(user), 'w')) as outfile:
+        for rec in existing:
+            rec = list(rec)
+            rec[0] = str(rec[0])
+            outfile.write('|'.join(rec) + '\n')
+
 def get_recent_tracks(user):
     '''
     '''
-    with open('{}.json'.format(user)) as txtfile:
-        try:
-            existing = json.load(txtfile)
-            dt_from = 0
-            if existing:
-                dt_from = existing[-1][0]
-            print('read user file')
-        except ValueError:
-            existing = []
-            dt_from = 0
-            print('empty file')
+    existing = get_existing(user)
+    dt_from = 0
+    if existing:
+        dt_from = existing[-1][0]
     new = []
     old = []
     newrecs = True
@@ -105,7 +118,6 @@ def get_recent_tracks(user):
             else:
                 d = get_data(user)   # new file
             rec = create_rec(d)
-            print('d=', d)
             if rec:
                 new = new + rec
             else:
@@ -117,20 +129,14 @@ def get_recent_tracks(user):
             rec = create_rec(d)
             old = old + rec
     existing = sorted(new + existing + old)
-    print('Existing', existing)
-    with open('{}.json'.format(user), 'w') as outfile:
-        json.dump(existing, outfile)
-    print('write to', user)
+    write_existing(existing, user)
 
     
 def display_results(user):
-    with open('{}.json'.format(user), 'r') as infile:
-        try: 
-            d = infile.read() 
-            history = json.load(d)
-        except ValueError:
-            print('No data to display')
-            return
+    history = get_existing(user)
+    if not history:
+        print('No data to display')
+        return
     print('You have listened to a total of {} tracks'.format(len(history)))
     artists = {}
     for rec in history:
@@ -147,6 +153,6 @@ def display_results(user):
 
 if __name__ == '__main__':
     user = check_args(sys.argv)
-    open('{}.json'.format(user), 'a').close()
+    open('{}.txt'.format(user), 'a').close()
     get_recent_tracks(user)
     display_results(user)
